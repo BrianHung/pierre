@@ -10,6 +10,7 @@ import { File, type FileOptions } from '../../components/File';
 import type { SelectedLineRange } from '../../managers/LineSelectionManager';
 import type { GetHoveredLineResult } from '../../managers/MouseEventManager';
 import type { FileContents, LineAnnotation } from '../../types';
+import type { TextSelection } from '../../utils/getTextSelection';
 import { areOptionsEqual } from '../../utils/areOptionsEqual';
 import { WorkerPoolContext } from '../WorkerPoolContext';
 import { useStableCallback } from './useStableCallback';
@@ -28,6 +29,7 @@ interface UseFileInstanceProps<LAnnotation> {
 interface UseFileInstanceReturn {
   ref(node: HTMLElement | null): void;
   getHoveredLine(): GetHoveredLineResult<'file'> | undefined;
+  getTextSelection(): TextSelection | null;
 }
 
 export function useFileInstance<LAnnotation>({
@@ -79,5 +81,10 @@ export function useFileInstance<LAnnotation>({
     | undefined => {
     return instanceRef.current?.getHoveredLine();
   }, []);
-  return { ref, getHoveredLine };
+
+  const getTextSelection = useCallback((): TextSelection | null => {
+    return instanceRef.current?.getTextSelection() ?? null;
+  }, []);
+
+  return { ref, getHoveredLine, getTextSelection };
 }

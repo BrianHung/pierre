@@ -8,6 +8,10 @@ import {
   UNSAFE_CSS_ATTRIBUTE,
 } from '../constants';
 import {
+  TextSelectionManager,
+  type TextSelectionOptions,
+} from '../managers/TextSelectionManager';
+import {
   LineSelectionManager,
   type LineSelectionOptions,
   type SelectedLineRange,
@@ -43,6 +47,10 @@ import { createCodeNode } from '../utils/createCodeNode';
 import { createHoverContentNode } from '../utils/createHoverContentNode';
 import { createUnsafeCSSStyleNode } from '../utils/createUnsafeCSSStyleNode';
 import { wrapUnsafeCSS } from '../utils/cssWrappers';
+import {
+  getTextSelection as getTextSelectionUtil,
+  type TextSelection,
+} from '../utils/getTextSelection';
 import { getLineAnnotationName } from '../utils/getLineAnnotationName';
 import { parseDiffFromFile } from '../utils/parseDiffFromFile';
 import { prerenderHTMLIfNecessary } from '../utils/prerenderHTMLIfNecessary';
@@ -69,7 +77,8 @@ export interface FileDiffHydrationProps<LAnnotation>
 export interface FileDiffOptions<LAnnotation>
   extends Omit<BaseDiffOptions, 'hunkSeparators'>,
     MouseEventManagerBaseOptions<'diff'>,
-    LineSelectionOptions {
+    LineSelectionOptions,
+    TextSelectionOptions {
   hunkSeparators?:
     | Exclude<HunkSeparators, 'custom'>
     | ((
@@ -111,6 +120,7 @@ export class FileDiff<LAnnotation = undefined> {
   private scrollSyncManager: ScrollSyncManager;
   private mouseEventManager: MouseEventManager<'diff'>;
   private lineSelectionManager: LineSelectionManager;
+  private textSelectionManager: TextSelectionManager;
 
   private annotationElements: HTMLElement[] = [];
   private lineAnnotations: DiffLineAnnotation<LAnnotation>[] = [];
@@ -151,6 +161,9 @@ export class FileDiff<LAnnotation = undefined> {
     this.lineSelectionManager = new LineSelectionManager(
       pluckLineSelectionOptions(options)
     );
+    this.textSelectionManager = new TextSelectionManager({
+      onTextSelectionChange: options.onTextSelectionChange,
+    });
     this.workerManager?.subscribeToThemeChanges(this);
   }
 
@@ -185,6 +198,9 @@ export class FileDiff<LAnnotation = undefined> {
       )
     );
     this.lineSelectionManager.setOptions(pluckLineSelectionOptions(options));
+    this.textSelectionManager.setOptions({
+      onTextSelectionChange: options.onTextSelectionChange,
+    });
   }
 
   private mergeOptions(options: Partial<FileDiffOptions<LAnnotation>>): void {
@@ -224,7 +240,11 @@ export class FileDiff<LAnnotation = undefined> {
     return this.mouseEventManager.getHoveredLine();
   };
 
-  setLineAnnotations(lineAnnotations: DiffLineAnnotation<LAnnotation>[]): void {
+  getTextSelection = (): TextSelection | null => {
+    return getTextSelectionUtil(this.fileContainer);
+  };
+
+  setLineAnnotations(lineAnnotations: DiffLineAnnotation<LAnnotation>[]): void{
     this.lineAnnotations = lineAnnotations;
   }
 
@@ -238,6 +258,7 @@ export class FileDiff<LAnnotation = undefined> {
     this.mouseEventManager.cleanUp();
     this.scrollSyncManager.cleanUp();
     this.lineSelectionManager.cleanUp();
+    this.textSelectionManager.cleanUp();
     this.workerManager?.unsubscribeToThemeChanges(this);
     this.workerManager = undefined;
 
@@ -315,6 +336,7 @@ export class FileDiff<LAnnotation = undefined> {
       this.injectUnsafeCSS();
       this.mouseEventManager.setup(this.pre);
       this.lineSelectionManager.setup(this.pre);
+      this.textSelectionManager.setup(this.fileContainer);
       if ((this.options.overflow ?? 'scroll') === 'scroll') {
         this.resizeManager.setup(this.pre);
         this.scrollSyncManager.setup(this.pre);
@@ -644,6 +666,7 @@ export class FileDiff<LAnnotation = undefined> {
 
     this.mouseEventManager.setup(pre);
     this.lineSelectionManager.setup(pre);
+    this.textSelectionManager.setup(this.fileContainer!);
     if ((this.options.overflow ?? 'scroll') === 'scroll') {
       this.resizeManager.setup(pre);
       this.scrollSyncManager.setup(pre, codeDeletions, codeAdditions);

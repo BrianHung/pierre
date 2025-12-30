@@ -14,6 +14,7 @@ import type {
   FileContents,
   FileDiffMetadata,
 } from '../../types';
+import type { TextSelection } from '../../utils/getTextSelection';
 import { areOptionsEqual } from '../../utils/areOptionsEqual';
 import { WorkerPoolContext } from '../WorkerPoolContext';
 import { useStableCallback } from './useStableCallback';
@@ -34,6 +35,7 @@ interface UseFileDiffInstanceProps<LAnnotation> {
 interface UseFileDiffInstanceReturn {
   ref(node: HTMLElement | null): void;
   getHoveredLine(): GetHoveredLineResult<'diff'> | undefined;
+  getTextSelection(): TextSelection | null;
 }
 
 export function useFileDiffInstance<LAnnotation>({
@@ -99,5 +101,9 @@ export function useFileDiffInstance<LAnnotation>({
     return instanceRef.current?.getHoveredLine();
   }, []);
 
-  return { ref, getHoveredLine };
+  const getTextSelection = useCallback((): TextSelection | null => {
+    return instanceRef.current?.getTextSelection() ?? null;
+  }, []);
+
+  return { ref, getHoveredLine, getTextSelection };
 }

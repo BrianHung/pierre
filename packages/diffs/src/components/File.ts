@@ -8,6 +8,10 @@ import {
   UNSAFE_CSS_ATTRIBUTE,
 } from '../constants';
 import {
+  TextSelectionManager,
+  type TextSelectionOptions,
+} from '../managers/TextSelectionManager';
+import {
   LineSelectionManager,
   type LineSelectionOptions,
   type SelectedLineRange,
@@ -35,6 +39,10 @@ import { createCodeNode } from '../utils/createCodeNode';
 import { createHoverContentNode } from '../utils/createHoverContentNode';
 import { createUnsafeCSSStyleNode } from '../utils/createUnsafeCSSStyleNode';
 import { wrapUnsafeCSS } from '../utils/cssWrappers';
+import {
+  getTextSelection as getTextSelectionUtil,
+  type TextSelection,
+} from '../utils/getTextSelection';
 import { getLineAnnotationName } from '../utils/getLineAnnotationName';
 import { prerenderHTMLIfNecessary } from '../utils/prerenderHTMLIfNecessary';
 import { setPreNodeProperties } from '../utils/setWrapperNodeProps';
@@ -58,7 +66,8 @@ export interface FileHyrdateProps<LAnnotation>
 export interface FileOptions<LAnnotation>
   extends BaseCodeOptions,
     MouseEventManagerBaseOptions<'file'>,
-    LineSelectionOptions {
+    LineSelectionOptions,
+    TextSelectionOptions {
   disableFileHeader?: boolean;
   renderCustomMetadata?: RenderFileMetadata;
   renderAnnotation?(
@@ -90,6 +99,7 @@ export class File<LAnnotation = undefined> {
   private resizeManager: ResizeManager;
   private mouseEventManager: MouseEventManager<'file'>;
   private lineSelectionManager: LineSelectionManager;
+  private textSelectionManager: TextSelectionManager;
 
   private annotationElements: HTMLElement[] = [];
   private lineAnnotations: LineAnnotation<LAnnotation>[] = [];
@@ -114,6 +124,9 @@ export class File<LAnnotation = undefined> {
     this.lineSelectionManager = new LineSelectionManager(
       pluckLineSelectionOptions(options)
     );
+    this.textSelectionManager = new TextSelectionManager({
+      onTextSelectionChange: options.onTextSelectionChange,
+    });
     this.workerManager?.subscribeToThemeChanges(this);
   }
 
@@ -131,6 +144,9 @@ export class File<LAnnotation = undefined> {
     this.options = options;
     this.mouseEventManager.setOptions(pluckMouseEventOptions(options));
     this.lineSelectionManager.setOptions(pluckLineSelectionOptions(options));
+    this.textSelectionManager.setOptions({
+      onTextSelectionChange: options.onTextSelectionChange,
+    });
   }
 
   private mergeOptions(options: Partial<FileOptions<LAnnotation>>): void {
@@ -171,6 +187,10 @@ export class File<LAnnotation = undefined> {
     return this.mouseEventManager.getHoveredLine();
   };
 
+  getTextSelection = (): TextSelection | null => {
+    return getTextSelectionUtil(this.fileContainer);
+  };
+
   setLineAnnotations(lineAnnotations: LineAnnotation<LAnnotation>[]): void {
     this.lineAnnotations = lineAnnotations;
   }
@@ -184,6 +204,7 @@ export class File<LAnnotation = undefined> {
     this.resizeManager.cleanUp();
     this.mouseEventManager.cleanUp();
     this.lineSelectionManager.cleanUp();
+    this.textSelectionManager.cleanUp();
     this.workerManager?.unsubscribeToThemeChanges(this);
     this.workerManager = undefined;
 
@@ -251,6 +272,7 @@ export class File<LAnnotation = undefined> {
       this.injectUnsafeCSS();
       this.mouseEventManager.setup(this.pre);
       this.lineSelectionManager.setup(this.pre);
+      this.textSelectionManager.setup(this.fileContainer);
       if ((this.options.overflow ?? 'scroll') === 'scroll') {
         this.resizeManager.setup(this.pre);
       }
@@ -390,6 +412,7 @@ export class File<LAnnotation = undefined> {
     this.mouseEventManager.setup(pre);
     this.lineSelectionManager.setup(pre);
     this.lineSelectionManager.setDirty();
+    this.textSelectionManager.setup(this.fileContainer!);
     if ((this.options.overflow ?? 'scroll') === 'scroll') {
       this.resizeManager.setup(pre);
     } else {

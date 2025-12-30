@@ -109,7 +109,7 @@ interface GetRenderOptionsReturn {
 }
 
 type OptionsWithDefaults = Required<
-  Omit<BaseDiffOptions, 'lang' | 'unsafeCSS'>
+  Omit<BaseDiffOptions, 'lang' | 'unsafeCSS' | 'onTextSelectionChange'>
 >;
 
 interface ExpansionRegion {

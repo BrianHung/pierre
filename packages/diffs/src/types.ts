@@ -11,6 +11,8 @@ import type {
   ThemedToken,
 } from 'shiki';
 
+import type { TextSelection } from './utils/getTextSelection';
+
 export interface FileContents {
   cacheKey?: string;
   name: string;
@@ -131,6 +133,9 @@ export interface BaseCodeOptions {
 
   // Custom CSS injection
   unsafeCSS?: string;
+
+  // Called when native text selection changes (null if no/invalid selection)
+  onTextSelectionChange?(selection: TextSelection | null): void;
 }
 
 export interface BaseDiffOptions extends BaseCodeOptions {
