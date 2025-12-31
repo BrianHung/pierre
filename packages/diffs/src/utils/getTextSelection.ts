@@ -1,51 +1,28 @@
 import type { AnnotationSide } from '../types';
 
-/**
- * Extended ShadowRoot interface with getSelection() method.
- * Note: ShadowRoot.getSelection() is supported in:
- * - Chrome 53+
- * - Firefox 127+
- * - Safari 13.1+
- */
 interface ShadowRootWithSelection extends ShadowRoot {
   getSelection(): Selection | null;
 }
 
-/**
- * Type guard to check if ShadowRoot has getSelection method.
- */
 function hasShadowRootSelection(
   shadowRoot: ShadowRoot
 ): shadowRoot is ShadowRootWithSelection {
-  return 'getSelection' in shadowRoot && typeof (shadowRoot as ShadowRootWithSelection).getSelection === 'function';
+  return (
+    'getSelection' in shadowRoot &&
+    typeof (shadowRoot as ShadowRootWithSelection).getSelection === 'function'
+  );
 }
 
 export interface TextSelection {
-  // Line numbers (1-based, from data-line attribute)
   startRow: number;
   endRow: number;
-
-  // Column offsets (0-based character position within line)
-  startCol: number;
-  endCol: number;
-
-  // Selected text content
+  startColumn: number;
+  endColumn: number;
   text: string;
-
-  // Diff side (for FileDiff only)
   side?: AnnotationSide;
   endSide?: AnnotationSide;
-
-  // Bounding box of selection
   getBoundingClientRect(): DOMRect;
-
-  // Native Range object - clone if storing beyond callback scope
   range: Range;
-
-  // Floating UI compatible virtual element
-  virtualElement: {
-    getBoundingClientRect: () => DOMRect;
-  };
 }
 
 interface LinePosition {
@@ -55,11 +32,7 @@ interface LinePosition {
 }
 
 /**
- * Gets the native text selection from within a shadow DOM container
- * and converts it to line/column coordinates.
- *
- * @param fileContainer - The container element (with shadow root)
- * @returns TextSelection object with row/col/text/rect, or null if no selection
+ * Gets text selection from shadow DOM and converts to line/column coordinates.
  */
 export function getTextSelection(
   fileContainer: HTMLElement | undefined
@@ -68,12 +41,10 @@ export function getTextSelection(
     return null;
   }
 
-  // Check if ShadowRoot.getSelection() is supported
   if (!hasShadowRootSelection(fileContainer.shadowRoot)) {
     return null;
   }
 
-  // Get selection from shadow DOM
   const selection = fileContainer.shadowRoot.getSelection();
   if (selection == null || selection.rangeCount === 0) {
     return null;
@@ -81,12 +52,10 @@ export function getTextSelection(
 
   const range = selection.getRangeAt(0);
 
-  // If selection is collapsed (just a cursor), return null
   if (range.collapsed) {
     return null;
   }
 
-  // Get start and end positions
   const startPos = getLinePosition(range.startContainer, range.startOffset);
   const endPos = getLinePosition(range.endContainer, range.endOffset);
 
@@ -96,40 +65,36 @@ export function getTextSelection(
 
   return {
     startRow: startPos.lineNumber,
-    startCol: startPos.column,
+    startColumn: startPos.column,
     endRow: endPos.lineNumber,
-    endCol: endPos.column,
+    endColumn: endPos.column,
     text: range.toString(),
     side: startPos.side,
     endSide: startPos.side !== endPos.side ? endPos.side : undefined,
     getBoundingClientRect: () => range.getBoundingClientRect(),
     range,
-    virtualElement: {
-      getBoundingClientRect: () => range.getBoundingClientRect(),
-    },
   };
 }
 
 /**
- * Walks up the DOM tree to find the line number and calculates
- * the column position within that line.
+ * Walks up the DOM tree to find line number and column position.
  */
 function getLinePosition(node: Node, offset: number): LinePosition | null {
   let currentNode: Node | null = node;
   let lineElement: Element | null = null;
   let contentColumn: Element | null = null;
 
-  // Walk up to find the line element (has data-line attribute)
   while (currentNode != null) {
     if (currentNode.nodeType === Node.ELEMENT_NODE) {
       const element = currentNode as Element;
 
-      // Find the content column if we haven't yet
-      if (contentColumn == null && element.hasAttribute('data-column-content')) {
+      if (
+        contentColumn == null &&
+        element.hasAttribute('data-column-content')
+      ) {
         contentColumn = element;
       }
 
-      // Check if this is a line element
       if (element.hasAttribute('data-line')) {
         lineElement = element;
         break;
@@ -142,16 +107,12 @@ function getLinePosition(node: Node, offset: number): LinePosition | null {
     return null;
   }
 
-  const lineNumber = parseInt(
-    lineElement.getAttribute('data-line') ?? '',
-    10
-  );
+  const lineNumber = parseInt(lineElement.getAttribute('data-line') ?? '', 10);
 
   if (isNaN(lineNumber)) {
     return null;
   }
 
-  // Determine side from data-line-type or parent data-code
   let side: AnnotationSide | undefined;
   const lineType = lineElement.getAttribute('data-line-type');
   if (lineType === 'change-addition' || lineType === 'context-expanded') {
@@ -159,7 +120,6 @@ function getLinePosition(node: Node, offset: number): LinePosition | null {
   } else if (lineType === 'change-deletion') {
     side = 'deletions';
   } else {
-    // Check parent for data-code attribute
     let parent: Element | null = lineElement.parentElement;
     while (parent != null) {
       if (parent.hasAttribute('data-code')) {
@@ -173,7 +133,6 @@ function getLinePosition(node: Node, offset: number): LinePosition | null {
     }
   }
 
-  // Calculate column position within the content
   const column = calculateColumnOffset(contentColumn, node, offset);
 
   return {
@@ -184,8 +143,7 @@ function getLinePosition(node: Node, offset: number): LinePosition | null {
 }
 
 /**
- * Calculates the character offset within a line's content column.
- * Uses Range API to get text content from line start to selection point.
+ * Calculates character offset within a line's content column.
  */
 function calculateColumnOffset(
   contentColumn: Element,
@@ -198,7 +156,6 @@ function calculateColumnOffset(
     range.setEnd(targetNode, targetOffset);
     return range.toString().length;
   } catch {
-    // Fallback if range creation fails (shouldn't happen in practice)
     return 0;
   }
 }

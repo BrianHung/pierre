@@ -1,6 +1,6 @@
 import {
-  getTextSelection,
   type TextSelection,
+  getTextSelection,
 } from '../utils/getTextSelection';
 
 export interface TextSelectionOptions {
@@ -8,9 +8,7 @@ export interface TextSelectionOptions {
 }
 
 /**
- * Manages native text selection events within the shadow DOM.
- * Listens to the browser's selectionchange event and converts
- * native Selection/Range objects to line/column coordinates.
+ * Manages native text selection events within shadow DOM.
  */
 export class TextSelectionManager {
   private fileContainer: HTMLElement | undefined;

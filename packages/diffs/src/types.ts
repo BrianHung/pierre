@@ -134,7 +134,7 @@ export interface BaseCodeOptions {
   // Custom CSS injection
   unsafeCSS?: string;
 
-  // Called when native text selection changes (null if no/invalid selection)
+  // Called when native text selection changes
   onTextSelectionChange?(selection: TextSelection | null): void;
 }
 
